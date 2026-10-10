@@ -135,20 +135,20 @@
             return '<div class="dz-avatar-opt" data-avatar="'+a+'" style="font-size:24px;cursor:pointer;padding:4px;border-radius:8px;background:' + (a===currentAvatar ? 'rgba(0,229,255,0.2)' : 'transparent') + ';border:1px solid ' + (a===currentAvatar ? '#00e5ff' : 'transparent') + ';">'+a+'</div>';
           }).join('') + '</div>';
 
-        var modalHTML = \`
+        var modalHTML = `
           <div id="dz-edit-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
             <div style="background:#0f172a;border:1px solid rgba(0,229,255,0.3);border-radius:16px;padding:24px;width:90%;max-width:340px;text-align:center;box-shadow:0 10px 40px rgba(0,229,255,0.2);">
               <h2 style="margin:0 0 12px 0;font-size:20px;font-weight:900;color:#fff;">Edit Profile</h2>
               <p style="margin:0 0 8px 0;font-size:12px;color:rgba(255,255,255,0.5);">Choose Avatar</p>
-              \${avatarHtml}
-              <input type="text" id="dz-edit-input" value="\${DZPlayer.data.name !== 'Player' ? DZPlayer.data.name : ''}" placeholder="Your Name" style="width:100%;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#1e293b;color:#fff;font-size:16px;margin-bottom:20px;box-sizing:border-box;outline:none;" maxlength="12">
+              ${avatarHtml}
+              <input type="text" id="dz-edit-input" value="${DZPlayer.data.name !== 'Player' ? DZPlayer.data.name : ''}" placeholder="Your Name" style="width:100%;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#1e293b;color:#fff;font-size:16px;margin-bottom:20px;box-sizing:border-box;outline:none;" maxlength="12">
               <div style="display:flex;gap:10px;">
                 <button id="dz-edit-cancel" style="flex:1;padding:12px;border-radius:8px;border:1px solid rgba(255,255,255,0.2);background:rgba(255,255,255,0.1);color:#fff;font-weight:700;cursor:pointer;">Cancel</button>
                 <button id="dz-edit-submit" style="flex:1;padding:12px;border-radius:8px;border:none;background:linear-gradient(135deg, #00e5ff, #0ea5e9);color:#000;font-weight:800;cursor:pointer;">Save</button>
               </div>
             </div>
           </div>
-        \`;
+        `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         var modal = document.getElementById('dz-edit-modal');
         var input = document.getElementById('dz-edit-input');
@@ -327,17 +327,17 @@
             return '<div class="dz-avatar-opt2" data-avatar="'+a+'" style="font-size:24px;cursor:pointer;padding:4px;border-radius:8px;background:' + (a===currentAvatar ? 'rgba(0,229,255,0.2)' : 'transparent') + ';border:1px solid ' + (a===currentAvatar ? '#00e5ff' : 'transparent') + ';">'+a+'</div>';
           }).join('') + '</div>';
 
-        var modalHTML = \`
+        var modalHTML = `
           <div id="dz-name-modal" style="position:fixed;top:0;left:0;right:0;bottom:0;background:rgba(0,0,0,0.85);z-index:9999;display:flex;align-items:center;justify-content:center;backdrop-filter:blur(8px);">
             <div style="background:#0f172a;border:1px solid rgba(0,229,255,0.3);border-radius:16px;padding:24px;width:90%;max-width:340px;text-align:center;box-shadow:0 10px 40px rgba(0,229,255,0.2);">
               <h2 style="margin:0 0 12px 0;font-size:24px;font-weight:900;color:#fff;">Welcome to <span style="color:#00e5ff;">DuelZone</span></h2>
               <p style="margin:0 0 8px 0;font-size:12px;color:rgba(255,255,255,0.5);">Choose an Avatar</p>
-              \${avatarHtml}
+              ${avatarHtml}
               <input type="text" id="dz-name-input" placeholder="Your Player Name" style="width:100%;padding:12px 16px;border-radius:8px;border:1px solid rgba(255,255,255,0.1);background:#1e293b;color:#fff;font-size:16px;margin-bottom:20px;box-sizing:border-box;outline:none;" maxlength="12">
               <button id="dz-name-submit" style="width:100%;padding:14px;border-radius:8px;border:none;background:linear-gradient(135deg, #00e5ff, #0ea5e9);color:#000;font-weight:800;font-size:16px;cursor:pointer;box-shadow:0 4px 15px rgba(0,229,255,0.4);">Let's Go!</button>
             </div>
           </div>
-        \`;
+        `;
         document.body.insertAdjacentHTML('beforeend', modalHTML);
         
         var modal = document.getElementById('dz-name-modal');
