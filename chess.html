@@ -1,0 +1,854 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Chess · DuelZone</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="duelzone.css" />
+  <style>
+    /* ── Chess-specific styles only ── */
+
+    .hidden { display: none !important; }
+
+    /* ── Setup: Color picker buttons ── */
+    .chess-color-btn {
+      flex: 1; height: 44px;
+      border-radius: var(--dz-radius-pill);
+      border: 1px solid var(--dz-border);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px; font-weight: 600;
+      color: var(--dz-text-secondary);
+      background: transparent; cursor: pointer;
+      transition: all var(--dz-transition);
+      display: flex; align-items: center; justify-content: center; gap: 6px;
+    }
+    .chess-color-btn.active {
+      border-color: var(--dz-cyan); color: var(--dz-cyan);
+      background: rgba(0,229,255,0.06);
+    }
+
+    /* ── Setup: Difficulty buttons ── */
+    .chess-diff-btn {
+      flex: 1; height: 40px;
+      border-radius: var(--dz-radius-pill);
+      border: 1px solid var(--dz-border);
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      font-size: 13px; font-weight: 600;
+      color: var(--dz-text-secondary);
+      background: transparent; cursor: pointer;
+      transition: all var(--dz-transition);
+    }
+    .chess-diff-btn.active { border-color: var(--dz-cyan); color: var(--dz-cyan); }
+
+    /* ── Setup: Board theme swatches ── */
+    .chess-theme-swatch {
+      width: 48px; height: 48px;
+      border-radius: var(--dz-radius-sm);
+      border: 2px solid transparent;
+      cursor: pointer; overflow: hidden;
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      grid-template-rows: 1fr 1fr;
+      transition: border-color 0.2s; flex-shrink: 0;
+    }
+    .chess-theme-swatch.active { border-color: var(--dz-cyan); }
+    .chess-theme-swatch span { display: block; }
+
+    /* ── Board wrapper ── */
+    #chess-board-wrap {
+      width: 100%; max-width: 440px;
+      margin: 0 auto; position: relative;
+    }
+
+    /* ── Board grid — JS renders into #chess-board ── */
+    #chess-board {
+      width: 100%; aspect-ratio: 1;
+      display: grid;
+      grid-template-columns: repeat(8, 1fr);
+      grid-template-rows: repeat(8, 1fr);
+      border-radius: var(--dz-radius-md);
+      overflow: hidden;
+      border: 2px solid var(--dz-border);
+      user-select: none;
+    }
+
+    /* ── Square base (JS uses .chess-cell) ── */
+    .chess-cell {
+      position: relative;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; overflow: hidden;
+    }
+
+    /* ── Board color themes — JS adds .chess-light / .chess-dark ── */
+
+    /* Navy/Blue (default) — matches reference Image 2 */
+    body:not([data-board]) .chess-cell.chess-light,
+    body[data-board="navy"] .chess-cell.chess-light { background: #b0c4d8; }
+    body:not([data-board]) .chess-cell.chess-dark,
+    body[data-board="navy"] .chess-cell.chess-dark  { background: #4a7fa5; }
+
+    /* Classic brown — Image 3 style */
+    body[data-board="classic"] .chess-cell.chess-light { background: #f0d9b5; }
+    body[data-board="classic"] .chess-cell.chess-dark  { background: #b58863; }
+
+    /* Green — Image 1 style */
+    body[data-board="green"] .chess-cell.chess-light { background: #9bc26a; }
+    body[data-board="green"] .chess-cell.chess-dark  { background: #5a8a3c; }
+
+    /* DuelZone dark */
+    body[data-board="dz"] .chess-cell.chess-light { background: #2a2a2a; }
+    body[data-board="dz"] .chess-cell.chess-dark  { background: #141414; }
+
+    /* ── Square state overlays ── */
+    .chess-cell.chess-selected { box-shadow: inset 0 0 0 3px var(--dz-cyan); }
+
+    .chess-cell.chess-move-target::after {
+      content: '';
+      position: absolute;
+      width: 33%; height: 33%;
+      background: rgba(0,0,0,0.28);
+      border-radius: 50%;
+      pointer-events: none; z-index: 2;
+    }
+
+    .chess-cell.chess-capture-target::after {
+      content: '';
+      position: absolute; inset: 0;
+      border: 4px solid rgba(0,0,0,0.28);
+      border-radius: 50%;
+      pointer-events: none; z-index: 2;
+    }
+
+    .chess-cell.chess-last-move { background: rgba(0,229,255,0.22) !important; }
+    .chess-cell.chess-in-check  { background: rgba(220,50,40,0.55) !important; }
+
+    /* Check ring animation */
+    .chess-check-ring {
+      position: absolute; inset: 0;
+      border-radius: 50%;
+      box-shadow: inset 0 0 0 3px rgba(220,50,40,0.9);
+      animation: checkPulse 0.8s ease-in-out infinite alternate;
+      pointer-events: none;
+    }
+    @keyframes checkPulse {
+      from { opacity: 1; }
+      to   { opacity: 0.3; }
+    }
+
+    /* ── Pieces — JS uses .chess-piece, .chess-piece-w, .chess-piece-b ── */
+    .chess-piece {
+      position: relative; z-index: 3;
+      font-size: clamp(18px, 5.5vw, 38px);
+      line-height: 1;
+      pointer-events: none;
+      display: flex; align-items: center; justify-content: center;
+    }
+
+    /* White pieces — solid white fill with black outline shadow */
+    .chess-piece-w {
+      color: #ffffff;
+      text-shadow:
+        0 0 2px #000,
+        1px 1px 0 #000,
+       -1px -1px 0 #000,
+        1px -1px 0 #000,
+       -1px  1px 0 #000;
+    }
+
+    /* Black pieces — solid dark with slight white outline for contrast */
+    .chess-piece-b {
+      color: #1a1a2e;
+      text-shadow:
+        0 0 2px rgba(255,255,255,0.4),
+        1px 1px 0 rgba(255,255,255,0.2),
+       -1px -1px 0 rgba(255,255,255,0.2);
+    }
+
+    /* ── Rank & file coordinate labels ── */
+    .chess-rank-label {
+      position: absolute;
+      top: 2px; left: 3px;
+      font-size: 9px; font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      opacity: 0.6; pointer-events: none; z-index: 4;
+      line-height: 1;
+    }
+
+    .chess-file-label {
+      position: absolute;
+      bottom: 2px; right: 3px;
+      font-size: 9px; font-weight: 700;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      opacity: 0.6; pointer-events: none; z-index: 4;
+      line-height: 1;
+    }
+
+    /* Label color contrast per square type */
+    .chess-cell.chess-light .chess-rank-label,
+    .chess-cell.chess-light .chess-file-label { color: #4a7fa5; }
+    .chess-cell.chess-dark  .chess-rank-label,
+    .chess-cell.chess-dark  .chess-file-label { color: #b0c4d8; }
+
+    body[data-board="classic"] .chess-cell.chess-light .chess-rank-label,
+    body[data-board="classic"] .chess-cell.chess-light .chess-file-label { color: #b58863; }
+    body[data-board="classic"] .chess-cell.chess-dark  .chess-rank-label,
+    body[data-board="classic"] .chess-cell.chess-dark  .chess-file-label { color: #f0d9b5; }
+
+    body[data-board="green"] .chess-cell.chess-light .chess-rank-label,
+    body[data-board="green"] .chess-cell.chess-light .chess-file-label { color: #5a8a3c; }
+    body[data-board="green"] .chess-cell.chess-dark  .chess-rank-label,
+    body[data-board="green"] .chess-cell.chess-dark  .chess-file-label { color: #9bc26a; }
+
+    body[data-board="dz"] .chess-cell.chess-light .chess-rank-label,
+    body[data-board="dz"] .chess-cell.chess-light .chess-file-label { color: #555; }
+    body[data-board="dz"] .chess-cell.chess-dark  .chess-rank-label,
+    body[data-board="dz"] .chess-cell.chess-dark  .chess-file-label { color: #444; }
+
+    /* Captured pieces display */
+    .chess-cap-piece { font-size: 14px; line-height: 1; }
+    .chess-cap-w { color: #fff; text-shadow: 0 0 1px #000, 1px 1px 0 #000; }
+    .chess-cap-b { color: #1a1a2e; text-shadow: 0 0 1px rgba(255,255,255,0.3); }
+
+    /* ── Player bars ── */
+    .chess-player-bar {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 10px var(--dz-spacing-md);
+    }
+
+    .chess-player-avatar {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      background: var(--dz-bg-card);
+      border: 1px solid var(--dz-border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      flex-shrink: 0;
+    }
+
+    .chess-player-info { flex: 1; }
+    .chess-player-name {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--dz-text-primary);
+      line-height: 1.2;
+    }
+    .chess-player-color {
+      font-size: 11px;
+      color: var(--dz-text-muted);
+    }
+
+    .chess-captured-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 1px;
+      font-size: 13px;
+      line-height: 1;
+    }
+
+    /* ── Status bar ── */
+    #chess-status-bar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 8px var(--dz-spacing-md);
+      background: var(--dz-bg-card);
+      border-top: 1px solid var(--dz-border);
+      border-bottom: 1px solid var(--dz-border);
+      margin-bottom: 4px;
+    }
+
+    #chess-turn-text {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dz-text-primary);
+    }
+
+    #chess-status {
+      font-size: 11px;
+      color: var(--dz-cyan);
+      font-weight: 500;
+    }
+
+    /* ── Controls row ── */
+    .chess-controls {
+      display: flex;
+      gap: 8px;
+      padding: 8px var(--dz-spacing-md);
+      justify-content: center;
+    }
+
+    .chess-ctrl-btn {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 3px;
+      padding: 8px 14px;
+      background: var(--dz-bg-card);
+      border: 1px solid var(--dz-border);
+      border-radius: var(--dz-radius-md);
+      cursor: pointer;
+      font-family: 'Plus Jakarta Sans', sans-serif;
+      color: var(--dz-text-secondary);
+      font-size: 10px;
+      font-weight: 600;
+      transition: all var(--dz-transition);
+      flex: 1;
+      max-width: 80px;
+    }
+    .chess-ctrl-btn:hover {
+      border-color: var(--dz-border-light);
+      color: var(--dz-text-primary);
+    }
+    .chess-ctrl-btn svg {
+      width: 18px; height: 18px;
+      stroke: currentColor; fill: none;
+      stroke-width: 1.8;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    /* ── Move list ── */
+    #chess-move-list-wrap {
+      max-height: 90px;
+      overflow-y: auto;
+      padding: 0 var(--dz-spacing-md);
+      margin-bottom: 8px;
+      scrollbar-width: thin;
+      scrollbar-color: var(--dz-border) transparent;
+    }
+    #chess-move-list {
+      font-size: 11px;
+      color: var(--dz-text-muted);
+      font-family: monospace;
+      line-height: 1.8;
+      word-spacing: 4px;
+    }
+
+    /* ── Result overlay ── */
+    #chess-result {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      padding: var(--dz-spacing-md);
+      backdrop-filter: blur(4px);
+    }
+
+    .chess-result-card {
+      background: var(--dz-bg-card);
+      border: 1px solid var(--dz-border);
+      border-radius: var(--dz-radius-xl);
+      padding: var(--dz-spacing-xl) var(--dz-spacing-lg);
+      width: 100%;
+      max-width: 340px;
+      text-align: center;
+    }
+
+    #chess-result-icon { font-size: 52px; margin-bottom: 12px; display: block; }
+
+    #chess-result-title {
+      font-size: 28px;
+      font-weight: 800;
+      background: var(--dz-gradient-text);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      margin-bottom: 6px;
+    }
+
+    #chess-result-detail {
+      font-size: 14px;
+      color: var(--dz-text-secondary);
+      margin-bottom: var(--dz-spacing-lg);
+    }
+
+    .chess-result-btns {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    /* ── Promotion modal ── */
+    #chess-promo-modal {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 300;
+    }
+
+    .chess-promo-card {
+      background: var(--dz-bg-card);
+      border: 1px solid var(--dz-border);
+      border-radius: var(--dz-radius-xl);
+      padding: var(--dz-spacing-xl);
+      text-align: center;
+    }
+
+    .chess-promo-card p {
+      font-size: 14px;
+      color: var(--dz-text-secondary);
+      margin-bottom: var(--dz-spacing-md);
+    }
+
+    .chess-promo-pieces {
+      display: flex;
+      gap: 12px;
+      justify-content: center;
+    }
+
+    .chess-promo-piece {
+      width: 60px;
+      height: 60px;
+      background: var(--dz-bg-card-alt);
+      border: 1px solid var(--dz-border);
+      border-radius: var(--dz-radius-md);
+      font-size: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: border-color var(--dz-transition);
+    }
+    .chess-promo-piece:hover { border-color: var(--dz-cyan); }
+
+    /* ── Menu overlay ── */
+    #chess-menu-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 200;
+      backdrop-filter: blur(4px);
+    }
+
+    .chess-menu-card {
+      background: var(--dz-bg-card);
+      border: 1px solid var(--dz-border);
+      border-radius: var(--dz-radius-xl);
+      padding: var(--dz-spacing-xl) var(--dz-spacing-lg);
+      width: 100%;
+      max-width: 300px;
+      text-align: center;
+    }
+
+    .chess-menu-card h3 {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--dz-text-primary);
+      margin-bottom: var(--dz-spacing-lg);
+    }
+
+    .chess-menu-card .dz-btn { margin-bottom: 10px; }
+
+    /* Light mode board adjustments */
+    [data-theme="light"] #chess-status-bar { background: #ebebeb; }
+    [data-theme="light"] .chess-ctrl-btn   { background: #ffffff; }
+
+    /* FEN display */
+    #chess-fen-display {
+      font-size: 9px;
+      color: var(--dz-text-muted);
+      padding: 4px var(--dz-spacing-md);
+      font-family: monospace;
+      word-break: break-all;
+      display: none;
+    }
+  </style>
+</head>
+<body data-board="navy">
+
+<div id="screen-chess" class="dz-app">
+
+  <!-- ═══════════════════════════════════════
+       SETUP SCREEN  (chess-home)
+  ════════════════════════════════════════ -->
+  <div id="chess-home">
+
+    <!-- Top bar -->
+    <header class="dz-topbar">
+      <span class="dz-logo">DuelZone</span>
+      <div class="dz-topbar-actions">
+        <button class="dz-icon-btn" id="chess-back-hub" aria-label="Back to hub">
+          <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+        </button>
+        <button class="dz-theme-toggle" id="themeToggle" aria-label="Toggle theme">
+          <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+          <svg id="iconSun"  viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Hero -->
+    <section class="dz-hero" style="padding-bottom:8px;">
+      <p class="dz-hero-eyebrow">Chess</p>
+      <h1 class="dz-hero-heading" style="font-size:30px;">Choose Your Battle</h1>
+    </section>
+
+    <div style="padding: 0 16px 24px;">
+
+      <!-- Mode cards — selection only, IDs are dz-* not chess-start-* -->
+      <div class="dz-mode-grid" style="margin-bottom:20px;">
+        <div class="dz-mode-card selected" id="dz-mode-pvp" style="cursor:pointer;">
+          <div class="dz-mode-icon">🤝</div>
+          <div class="dz-mode-name">vs Friend</div>
+          <div class="dz-mode-desc">Local pass &amp; play</div>
+        </div>
+        <div class="dz-mode-card" id="dz-mode-bot" style="cursor:pointer;">
+          <div class="dz-mode-icon">🤖</div>
+          <div class="dz-mode-name">vs Bot</div>
+          <div class="dz-mode-desc">AI opponent</div>
+        </div>
+      </div>
+
+      <!-- Hidden real buttons chess.js listens to — triggered by START MATCH only -->
+      <button id="chess-start-pvp" style="display:none;"></button>
+      <button id="chess-start-bot" style="display:none;"></button>
+
+      <!-- Difficulty — only shown for vs Bot -->
+      <div id="chess-diff-section" style="display:none;">
+        <p class="dz-hero-eyebrow" style="margin-bottom:10px;">Difficulty</p>
+        <div style="display:flex; gap:8px; margin-bottom:20px;">
+          <button class="chess-diff-btn" data-depth="1">Easy</button>
+          <button class="chess-diff-btn active" data-depth="2">Medium</button>
+          <button class="chess-diff-btn" data-depth="3">Hard</button>
+          <button class="chess-diff-btn" data-depth="4">Expert</button>
+        </div>
+      </div>
+
+      <!-- Play as — only shown for vs Bot -->
+      <div id="chess-color-section" style="display:none;">
+        <p class="dz-hero-eyebrow" style="margin-bottom:10px;">Play As</p>
+        <div style="display:flex; gap:8px; margin-bottom:20px;">
+          <button class="chess-color-btn active" data-color="w">♔ White</button>
+          <button class="chess-color-btn" data-color="b">♚ Black</button>
+        </div>
+      </div>
+
+      <!-- Board theme -->
+      <p class="dz-hero-eyebrow" style="margin-bottom:10px;">Board Theme</p>
+      <div style="display:flex; gap:10px; margin-bottom:28px;">
+        <div class="chess-theme-swatch active" data-board="navy" onclick="setBoardTheme(this)">
+          <span style="background:#dee3e6;"></span><span style="background:#8ca2ad;"></span>
+          <span style="background:#8ca2ad;"></span><span style="background:#dee3e6;"></span>
+        </div>
+        <div class="chess-theme-swatch" data-board="classic" onclick="setBoardTheme(this)">
+          <span style="background:#f0d9b5;"></span><span style="background:#b58863;"></span>
+          <span style="background:#b58863;"></span><span style="background:#f0d9b5;"></span>
+        </div>
+        <div class="chess-theme-swatch" data-board="green" onclick="setBoardTheme(this)">
+          <span style="background:#ffffdd;"></span><span style="background:#86a666;"></span>
+          <span style="background:#86a666;"></span><span style="background:#ffffdd;"></span>
+        </div>
+        <div class="chess-theme-swatch" data-board="dz" onclick="setBoardTheme(this)">
+          <span style="background:#2a2a2a;"></span><span style="background:#1a1a1a;"></span>
+          <span style="background:#1a1a1a;"></span><span style="background:#2a2a2a;"></span>
+        </div>
+      </div>
+
+      <!-- Toggles -->
+      <div class="dz-toggle-row">
+        <span class="dz-toggle-label">Sound Effects</span>
+        <label class="dz-toggle">
+          <input type="checkbox" id="chess-sound-toggle" checked />
+          <div class="dz-toggle-track"></div>
+          <div class="dz-toggle-thumb"></div>
+        </label>
+      </div>
+      <div class="dz-toggle-row" style="margin-bottom:28px;">
+        <span class="dz-toggle-label">Show Hints</span>
+        <label class="dz-toggle">
+          <input type="checkbox" id="chess-hint-toggle" checked />
+          <div class="dz-toggle-track"></div>
+          <div class="dz-toggle-thumb"></div>
+        </label>
+      </div>
+
+      <!-- Start button -->
+      <button class="dz-btn dz-btn-primary-white" id="chess-start-main">START MATCH</button>
+
+    </div>
+  </div><!-- end #chess-home -->
+
+
+  <!-- ═══════════════════════════════════════
+       PLAY SCREEN  (chess-play-panel)
+  ════════════════════════════════════════ -->
+  <div id="chess-play-panel" class="hidden">
+
+    <!-- Top bar -->
+    <header class="dz-topbar" style="padding: 10px 16px;">
+      <button class="dz-icon-btn" id="chess-back-hub-play" aria-label="Back to menu">
+        <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+      </button>
+      <span class="dz-logo" style="font-size:17px;">Chess</span>
+      <div class="dz-topbar-actions">
+        <button class="dz-icon-btn" id="chess-menu-btn" aria-label="Menu">
+          <svg viewBox="0 0 24 24"><line x1="3" y1="12" x2="21" y2="12"/><line x1="3" y1="6" x2="21" y2="6"/><line x1="3" y1="18" x2="21" y2="18"/></svg>
+        </button>
+      </div>
+    </header>
+
+    <!-- Opponent bar (top) -->
+    <div class="chess-player-bar">
+      <div class="chess-player-avatar">♟</div>
+      <div class="chess-player-info">
+        <div class="chess-player-name" id="chess-opp-name">Opponent</div>
+        <div class="chess-player-color" id="chess-opp-color">Black</div>
+      </div>
+      <div id="chess-captured-w" class="chess-captured-row"></div>
+    </div>
+
+    <!-- Status bar -->
+    <div id="chess-status-bar">
+      <span id="chess-turn-text">White's turn</span>
+      <span id="chess-status"></span>
+    </div>
+
+    <!-- Board -->
+    <div style="padding: 4px 12px;">
+      <div id="chess-board-wrap">
+        <div id="chess-board"></div>
+      </div>
+    </div>
+
+    <!-- Player bar (bottom) -->
+    <div class="chess-player-bar">
+      <div class="chess-player-avatar">😊</div>
+      <div class="chess-player-info">
+        <div class="chess-player-name" id="chess-you-name">You</div>
+        <div class="chess-player-color" id="chess-you-color">White</div>
+      </div>
+      <div id="chess-captured-b" class="chess-captured-row"></div>
+    </div>
+
+    <!-- Controls -->
+    <div class="chess-controls">
+      <button class="chess-ctrl-btn" id="chess-undo-btn">
+        <svg viewBox="0 0 24 24"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 1 0 .49-4.95"/></svg>
+        Undo
+      </button>
+      <button class="chess-ctrl-btn" id="chess-hint-btn">
+        <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+        Hint
+      </button>
+      <button class="chess-ctrl-btn" id="chess-reset-btn">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-5"/></svg>
+        Reset
+      </button>
+      <button class="chess-ctrl-btn" onclick="document.getElementById('chess-move-list-wrap').classList.toggle('hidden')">
+        <svg viewBox="0 0 24 24"><line x1="8" y1="6" x2="21" y2="6"/><line x1="8" y1="12" x2="21" y2="12"/><line x1="8" y1="18" x2="21" y2="18"/><line x1="3" y1="6" x2="3.01" y2="6"/><line x1="3" y1="12" x2="3.01" y2="12"/><line x1="3" y1="18" x2="3.01" y2="18"/></svg>
+        Moves
+      </button>
+    </div>
+
+    <!-- Move list -->
+    <div id="chess-move-list-wrap" class="hidden">
+      <div id="chess-move-list"></div>
+    </div>
+
+    <!-- FEN (debug, hidden by default) -->
+    <div id="chess-fen-display"></div>
+
+  </div><!-- end #chess-play-panel -->
+
+</div><!-- end #screen-chess -->
+
+
+<!-- ═══ RESULT OVERLAY ═══ -->
+<div id="chess-result" class="hidden">
+  <div class="chess-result-card">
+    <span id="chess-result-icon">🏆</span>
+    <div id="chess-result-title">Victory!</div>
+    <div id="chess-result-detail">You won by checkmate</div>
+    <div class="chess-result-btns">
+      <button class="dz-btn dz-btn-primary" id="chess-play-again">PLAY AGAIN</button>
+      <button class="dz-btn dz-btn-secondary" id="chess-result-hub">← Back to Hub</button>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ PROMOTION MODAL ═══ -->
+<div id="chess-promo-modal" class="hidden">
+  <div class="chess-promo-card">
+    <p>Promote your pawn to:</p>
+    <div class="chess-promo-pieces">
+      <div class="chess-promo-piece" data-promo="q">♛</div>
+      <div class="chess-promo-piece" data-promo="r">♜</div>
+      <div class="chess-promo-piece" data-promo="b">♝</div>
+      <div class="chess-promo-piece" data-promo="n">♞</div>
+    </div>
+  </div>
+</div>
+
+
+<!-- ═══ IN-GAME MENU OVERLAY ═══ -->
+<div id="chess-menu-overlay" class="hidden">
+  <div class="chess-menu-card">
+    <h3>Game Paused</h3>
+    <button class="dz-btn dz-btn-primary" id="chess-menu-resume">RESUME</button>
+    <button class="dz-btn dz-btn-secondary" id="chess-menu-restart">RESTART</button>
+    <button class="dz-btn dz-btn-secondary" id="chess-menu-quit" style="margin-bottom:0">QUIT TO HUB</button>
+  </div>
+</div>
+
+
+<div id="dz-result-overlay">
+  <div class="dz-result-page" style="max-width:320px;">
+    <div class="dz-result-trophy">🏆</div>
+    <h2 class="dz-result-heading" id="dz-result-title">Victory!</h2>
+    <p class="dz-result-subtitle" id="dz-result-sub"></p>
+
+    <!-- Stats row for screenshots -->
+    <div class="dz-stats-card" id="dz-result-stats" style="display:none;">
+      <div class="dz-stat-item">
+        <span class="dz-stat-value" id="dz-stat-time">00:00</span>
+        <span class="dz-stat-label">Time</span>
+      </div>
+      <div class="dz-stat-item">
+        <span class="dz-stat-value" id="dz-stat-acc">0%</span>
+        <span class="dz-stat-label">Accuracy</span>
+      </div>
+      <div class="dz-stat-item">
+        <span class="dz-stat-value" id="dz-stat-xp">+0</span>
+        <span class="dz-stat-label">XP</span>
+      </div>
+    </div>
+
+    <div class="dz-result-actions">
+      <button class="dz-btn dz-btn-primary" id="dz-result-again" type="button">PLAY AGAIN</button>
+      <button class="dz-btn dz-btn-secondary" id="dz-result-share" type="button">SHARE WIN</button>
+    </div>
+    <a class="dz-see-all" href="index.html" style="margin-top:8px;display:block;">← Back to Hub</a>
+  </div>
+</div>
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+
+<script src="dz-game-shell.js"></script>
+<script>
+  // ── Board theme ───────────────────────────────────────────────────────────
+  function setBoardTheme(el) {
+    document.querySelectorAll('.chess-theme-swatch').forEach(function (s) { s.classList.remove('active'); });
+    el.classList.add('active');
+    document.body.setAttribute('data-board', el.dataset.board);
+  }
+
+  // ── Mode card — selection only, no game start ─────────────────────────────
+  var diffSection  = document.getElementById('chess-diff-section');
+  var colorSection = document.getElementById('chess-color-section');
+
+  document.getElementById('dz-mode-pvp').addEventListener('click', function () {
+    document.getElementById('dz-mode-pvp').classList.add('selected');
+    document.getElementById('dz-mode-bot').classList.remove('selected');
+    diffSection.style.display  = 'none';
+    colorSection.style.display = 'none';
+  });
+
+  document.getElementById('dz-mode-bot').addEventListener('click', function () {
+    document.getElementById('dz-mode-bot').classList.add('selected');
+    document.getElementById('dz-mode-pvp').classList.remove('selected');
+    diffSection.style.display  = 'block';
+    colorSection.style.display = 'block';
+  });
+
+  // ── START MATCH — only this starts the game ───────────────────────────────
+  document.addEventListener('DOMContentLoaded', function () {
+    var home = document.getElementById('chess-home');
+    var play = document.getElementById('chess-play-panel');
+
+    document.getElementById('chess-start-main').addEventListener('click', function () {
+      var isPvp = document.getElementById('dz-mode-pvp').classList.contains('selected');
+
+      // Switch panels
+      home.classList.add('hidden');
+      play.classList.remove('hidden');
+
+      // Update player labels
+      document.getElementById('chess-opp-name').textContent  = isPvp ? 'Player 2' : 'Bot';
+      document.getElementById('chess-opp-color').textContent = isPvp ? 'Black' : 'Bot';
+      document.getElementById('chess-you-name').textContent  = 'You';
+
+      // Click the hidden real button — chess.js picks this up
+      if (isPvp) {
+        document.getElementById('chess-start-pvp').click();
+      } else {
+        document.getElementById('chess-start-bot').click();
+      }
+    });
+
+    // Back from play → home
+    var backBtn = document.getElementById('chess-back-hub-play');
+    if (backBtn) {
+      backBtn.addEventListener('click', function () {
+        home.classList.remove('hidden');
+        play.classList.add('hidden');
+      });
+    }
+
+    // Menu overlay controls
+    var overlay = document.getElementById('chess-menu-overlay');
+    document.getElementById('chess-menu-resume').addEventListener('click', function () {
+      overlay.classList.add('hidden');
+    });
+    document.getElementById('chess-menu-restart').addEventListener('click', function () {
+      overlay.classList.add('hidden');
+      if (typeof chessResetGame === 'function') chessResetGame();
+    });
+    document.getElementById('chess-menu-quit').addEventListener('click', function () {
+      overlay.classList.add('hidden');
+      home.classList.remove('hidden');
+      play.classList.add('hidden');
+    });
+
+    // Menu btn
+    var menuBtn = document.getElementById('chess-menu-btn');
+    if (menuBtn) {
+      menuBtn.addEventListener('click', function () {
+        overlay.classList.remove('hidden');
+      });
+    }
+  });
+
+  // ── Stubs so chess.js doesn't throw ──────────────────────────────────────
+  function showHub() { window.location.href = 'index.html'; }
+  function hideAllScreens() {}
+  window.dzShowGameMenuBtn = function () {};
+  window.dzHideGameMenuBtn = function () {};
+</script>
+
+<!-- Chess engine — must load after HTML -->
+<script src="chess.js"></script>
+<script>
+
+  if (typeof dzInitGamePage === 'function') {
+    dzInitGamePage({
+      onLeave: function () { if (typeof dzStopAllGames === 'function') dzStopAllGames(); }
+    });
+  }
+</script>
+<script src="dzshare.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(err => console.warn('SW failed:', err));
+    });
+  }
+</script>
+</html>

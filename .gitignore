@@ -1,0 +1,4 @@
+_live_*
+node_modules/
+.DS_Store
+Thumbs.db

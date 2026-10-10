@@ -1,0 +1,180 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="description" content="DuelZone — 25+ free browser games. No download, no login." />
+  <title>DuelZone — Play. Duel. Win.</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <meta name="mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <link rel="apple-touch-icon" href="assets/icon-192.png">
+  <link rel="stylesheet" href="duelzone.css" />
+  <style>
+    .hidden { display: none !important; }
+    a.dz-card { display: flex; flex-direction: column; justify-content: space-between; color: inherit; }
+    a.dz-card:hover { border-color: var(--dz-border-light); transform: translateY(-2px); }
+    .dz-hero-dynamic { position: relative; }
+    #dz-view-about { padding: 0 16px 24px; }
+    #dz-view-about p { color: var(--dz-text-secondary); font-size: 14px; line-height: 1.6; margin-bottom: 12px; }
+  </style>
+</head>
+<body id="dz-hub">
+<div id="dz-loader" class="dz-loader-overlay">
+  <div class="dz-spinner"></div>
+  <div style="font-weight:700;font-size:14px;letter-spacing:1px;color:var(--dz-cyan)">LOADING...</div>
+</div>
+
+<div class="dz-app">
+
+  <header class="dz-topbar">
+    <span class="dz-logo">DuelZone</span>
+    <div class="dz-topbar-actions">
+      <button class="dz-theme-toggle" id="themeToggle" aria-label="Toggle theme" type="button">
+        <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.79"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="dz-panel-home" class="dz-panel">
+    <section class="dz-hero" style="position:relative;overflow:hidden;">
+      <canvas id="dz-hero-particles" style="position:absolute;inset:0;width:100%;height:100%;z-index:0;pointer-events:none;"></canvas>
+      <div style="position:relative;z-index:1;">
+        <p class="dz-hero-eyebrow">The Ultimate Arena</p>
+        <h1 class="dz-hero-heading">
+          <span id="dynamicWord" class="dz-hero-dynamic">Play.</span><br>
+          Duel. Win.
+        </h1>
+      </div>
+    </section>
+
+    <div class="dz-search">
+      <svg class="dz-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+      <input class="dz-search-input" type="text" placeholder="Search games..." aria-label="Search games" />
+    </div>
+
+    <div class="dz-filters">
+      <button class="dz-filter-pill active" type="button">All</button>
+      <button class="dz-filter-pill" type="button">Strategy</button>
+      <button class="dz-filter-pill" type="button">Board</button>
+      <button class="dz-filter-pill" type="button">Arcade</button>
+      <button class="dz-filter-pill" type="button">Puzzle</button>
+      <button class="dz-filter-pill" type="button">Card</button>
+      <button class="dz-filter-pill" type="button">Casual</button>
+    </div>
+
+    <div class="dz-section-header">
+      <span class="dz-section-title">Trending Now</span>
+    </div>
+    <div class="dz-scroll-row" id="dz-trending-row"></div>
+  </div>
+
+  <div id="dz-panel-games" class="dz-panel hidden">
+    <div class="dz-section-header" id="dz-games-section">
+      <span class="dz-section-title">Games</span>
+    </div>
+    <div class="dz-games-grid" id="dz-games-grid"></div>
+  </div>
+
+  <div id="dz-panel-profile" class="dz-panel hidden">
+    <div class="dz-section-header">
+      <span class="dz-section-title">Player Profile</span>
+    </div>
+    <div class="dz-profile-wrap">
+      <div class="dz-profile-header">
+        <div class="dz-level-badge" id="dz-prof-level">1</div>
+        <div class="dz-profile-info">
+          <h3><span id="dz-prof-avatar" style="margin-right:4px;">👽</span><span id="dz-prof-name">Player</span> <button id="dz-prof-edit-name" style="font-size:14px;background:none;border:none;cursor:pointer;opacity:0.6;vertical-align:middle;">✏️</button></h3>
+          <p><span id="dz-prof-matches">0</span> Matches Played</p>
+          <div class="dz-xp-container">
+            <div class="dz-xp-bar-bg"><div class="dz-xp-bar-fill" id="dz-prof-xp-fill"></div></div>
+            <div class="dz-xp-labels">
+              <span id="dz-prof-xp-current">0 XP</span>
+              <span id="dz-prof-xp-next">100 XP</span>
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="dz-section-header" style="margin-top:24px;padding:0;">
+        <span class="dz-section-title">Preferences</span>
+      </div>
+      <div class="dz-setting-row" style="margin-top:12px;">
+        <div>
+          <div class="dz-setting-label">Background Music</div>
+          <div class="dz-setting-desc">Ambient synth track</div>
+        </div>
+        <label class="rx-switch" style="width:44px;height:24px;position:relative;display:inline-block;">
+          <input type="checkbox" id="dz-toggle-music" style="opacity:0;width:0;height:0;">
+          <span class="rx-slider" style="position:absolute;inset:0;background-color:var(--dz-border);border-radius:24px;transition:.3s;cursor:pointer;"></span>
+        </label>
+      </div>
+      <div class="dz-setting-row">
+        <div>
+          <div class="dz-setting-label">Sound Effects</div>
+          <div class="dz-setting-desc">In-game audio feedback</div>
+        </div>
+        <label class="rx-switch" style="width:44px;height:24px;position:relative;display:inline-block;">
+          <input type="checkbox" id="dz-toggle-sfx" checked style="opacity:0;width:0;height:0;">
+          <span class="rx-slider" style="position:absolute;inset:0;background-color:var(--dz-border);border-radius:24px;transition:.3s;cursor:pointer;"></span>
+        </label>
+      </div>
+    </div>
+  </div>
+
+  <div id="dz-panel-about" class="dz-panel hidden">
+    <div class="dz-section-header">
+      <span class="dz-section-title">About DuelZone</span>
+    </div>
+    <div style="padding:0 16px 24px;">
+      <p style="color:var(--dz-text-secondary);font-size:14px;line-height:1.6;margin-bottom:12px;">DuelZone is a browser game hub by VGWA — 25+ competitive and casual games with zero download and zero login. Built mobile-first for instant play.</p>
+      <p style="color:var(--dz-text-secondary);font-size:14px;line-height:1.6;margin-bottom:12px;">Every game supports local pass-and-play or solo modes. No accounts required. Completely ad-free.</p>
+      <p style="color:var(--dz-text-secondary);font-size:14px;line-height:1.6;">Website: duelzone.online · Contact: hello@duelzone.online</p>
+    </div>
+  </div>
+
+  <div class="dz-spacer-xl" style="height:80px;"></div>
+</div>
+
+<nav class="dz-nav">
+  <button class="dz-nav-item active" type="button" data-nav="home">
+    <svg viewBox="0 0 24 24"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+    <span class="dz-nav-label">Home</span>
+  </button>
+  <button class="dz-nav-item" type="button" data-nav="games">
+    <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+    <span class="dz-nav-label">Games</span>
+  </button>
+  <button class="dz-nav-item" type="button" data-nav="profile">
+    <svg viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+    <span class="dz-nav-label">Profile</span>
+  </button>
+  <button class="dz-nav-item" type="button" data-nav="about">
+    <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
+    <span class="dz-nav-label">About</span>
+  </button>
+</nav>
+
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+
+<script src="dz-router.js"></script>
+<script src="dz-hub.js"></script>
+<script src="dzshare.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').then(reg => {
+        reg.update();
+      }).catch(err => {
+        console.warn('SW registration failed: ', err);
+      });
+    });
+  }
+</script>
+</body>
+</html>

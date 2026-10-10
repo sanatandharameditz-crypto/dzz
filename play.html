@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Play · DuelZone</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="duelzone.css"/>
+  <style>
+    .hidden { display: none !important; }
+    #game-area { padding: 12px; min-height: 200px; }
+    #dz-result-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; z-index:200; padding:16px; }
+    #dz-result-overlay.show { display:flex; }
+  </style>
+</head>
+<body id="dz-play-page">
+<div class="dz-app">
+  <header class="dz-topbar">
+    <a class="dz-icon-btn" id="dz-back-hub" href="index.html" aria-label="Back">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <span class="dz-logo" id="game-title-bar" style="font-size:17px;">Game</span>
+    <div class="dz-topbar-actions">
+      <button class="dz-icon-btn" id="dz-restart" type="button" aria-label="Restart">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-5"/></svg>
+      </button>
+      <button class="dz-theme-toggle" id="themeToggle" type="button">
+        <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/></svg>
+      </button>
+    </div>
+  </header>
+  <div id="game-setup" class="dz-setup-page">
+    <p class="dz-hero-eyebrow" id="game-eyebrow">Game</p>
+    <h2 class="dz-hero-heading" style="font-size:28px;" id="game-heading">Ready?</h2>
+    <p style="color:var(--dz-text-secondary);font-size:13px;margin-bottom:24px;" id="game-desc"></p>
+    <button class="dz-btn dz-btn-primary" id="game-start" type="button">START MATCH</button>
+  </div>
+  <div id="game-play" class="hidden"><div id="game-area"></div></div>
+</div>
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+
+<script src="dz-game-shell.js"></script>
+<script src="games/boot.js"></script>
+<script>
+(function () {
+  'use strict';
+
+  var SCRIPT_MAP = {
+    battleship: 'battleship.js', checkers: 'checkers.js', sudoku: 'sudoku.js',
+    minesweeper: 'minesweeper.js', airhockey: 'airhockey.js', tanks: 'tanks.js',
+    bomberman: 'bomberman.js', starcatcher: 'starcatcher.js', spacedodge: 'spacedodge.js',
+    territory: 'territory.js', pingpong: 'pingpong.js', darts: 'darts.js',
+    reaction: 'reaction.js', snake: 'snake.js', connect4: 'connect4.js',
+    wordduel: 'wordduel.js', pool: 'pool.js', blackjack: 'blackjack.js',
+    memory: 'memory.js', '2048': 'game2048.js', pong: 'pong.js'
+  };
+
+  function getParam() {
+    try {
+      return new URLSearchParams(window.location.search).get('game');
+    } catch (e) {
+      var m = window.location.search.match(/[?&]game=([^&]+)/);
+      return m ? decodeURIComponent(m[1]) : null;
+    }
+  }
+
+  var gameId = getParam();
+  var gameMeta = typeof findGame === 'function' ? findGame(gameId) : null;
+
+  if (!gameId || !SCRIPT_MAP[gameId]) {
+    window.location.replace('index.html');
+    return;
+  }
+
+  document.body.setAttribute('data-game-id', gameId);
+  if (gameMeta) {
+    document.title = gameMeta.title + ' · DuelZone';
+    document.getElementById('game-title-bar').textContent = gameMeta.title;
+    document.getElementById('game-eyebrow').textContent = gameMeta.title;
+    document.getElementById('game-desc').textContent = gameMeta.desc;
+  }
+
+  var s = document.createElement('script');
+  s.src = 'games/' + SCRIPT_MAP[gameId];
+  s.onload = function () {
+    var r = document.createElement('script');
+    r.src = 'games/runner.js';
+    document.body.appendChild(r);
+  };
+  document.body.appendChild(s);
+})();
+</script>
+<script src="dzshare.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(err => console.warn('SW failed:', err));
+    });
+  }
+</script>
+</body>
+</html>

@@ -1,0 +1,275 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Ludo · DuelZone</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="duelzone.css"/>
+  <style>
+    .hidden { display: none !important; }
+    :root {
+      --red: #e53935; --green: #43a047; --yellow: #fdd835; --blue: #1e88e5;
+      --ludo-white: #f5f5f5;
+    }
+    [data-theme="light"] { --ludo-white: #ffffff; }
+
+    #ludo-board-wrap { width:100%; max-width:400px; margin:0 auto; padding:0 10px; }
+    #ludo-board {
+      width:100%; aspect-ratio:1;
+      display:grid; grid-template-columns:repeat(15,1fr); grid-template-rows:repeat(15,1fr);
+      border:3px solid #000; background:#000; gap:1px;
+      position:relative; box-shadow:0 8px 24px rgba(0,0,0,0.35);
+    }
+    .cell {
+      position:relative; display:flex; align-items:center; justify-content:center;
+      background:var(--ludo-white);
+    }
+    .home-base {
+      display:flex; align-items:center; justify-content:center; position:relative;
+    }
+    .base-red { background:var(--red); }
+    .base-green { background:var(--green); }
+    .base-yellow { background:var(--yellow); }
+    .base-blue { background:var(--blue); }
+
+    .home-white-box {
+      width: 68%; height: 68%; background: var(--ludo-white);
+      display:grid; grid-template-columns: 1fr 1fr; grid-template-rows: 1fr 1fr;
+      gap: 16%; padding: 16%; box-sizing: border-box; border-radius: 2px;
+    }
+    .home-circle {
+      border-radius: 50%; width: 100%; height: 100%; position: relative;
+    }
+    .circle-red { background:var(--red); }
+    .circle-green { background:var(--green); }
+    .circle-yellow { background:var(--yellow); }
+    .circle-blue { background:var(--blue); }
+
+    .board-center {
+      background: conic-gradient(from 45deg, var(--yellow) 0deg 90deg, var(--blue) 90deg 180deg, var(--red) 180deg 270deg, var(--green) 270deg 360deg);
+    }
+
+    .path-red { background:var(--red) !important; }
+    .path-green { background:var(--green) !important; }
+    .path-yellow { background:var(--yellow) !important; }
+    .path-blue { background:var(--blue) !important; }
+
+    .col-red { background:var(--red) !important; }
+    .col-green { background:var(--green) !important; }
+    .col-yellow { background:var(--yellow) !important; }
+    .col-blue { background:var(--blue) !important; }
+
+    .star-icon { font-size: clamp(10px, 2.5vw, 18px); position:absolute; line-height:1; }
+    .red-star { color: var(--red); }
+    .green-star { color: var(--green); }
+    .yellow-star { color: var(--yellow); }
+    .blue-star { color: var(--blue); }
+    .gray-star { color: #9e9e9e; }
+
+    .arrow { font-size: clamp(12px, 3vw, 22px); font-weight: 900; position:absolute; line-height:1; }
+    .red-arrow { color: var(--red); }
+    .green-arrow { color: var(--green); }
+    .yellow-arrow { color: var(--yellow); }
+    .blue-arrow { color: var(--blue); }
+
+    .token {
+      width:72%; height:72%; border-radius:50%; position:absolute; cursor:pointer; z-index:10;
+      display:flex; align-items:center; justify-content:center; font-size:7px; font-weight:800;
+      border:2px solid rgba(255,255,255,0.85);
+      box-shadow:0 2px 6px rgba(0,0,0,0.5), inset 0 1px 3px rgba(255,255,255,0.4);
+    }
+    .token.red { background:radial-gradient(circle at 35% 35%,#ff6b6b,#c62828); color:#fff; }
+    .token.green { background:radial-gradient(circle at 35% 35%,#81c784,#2e7d32); color:#fff; }
+    .token.yellow { background:radial-gradient(circle at 35% 35%,#fff176,#f9a825); color:#333; }
+    .token.blue { background:radial-gradient(circle at 35% 35%,#64b5f6,#1565c0); color:#fff; }
+    .token.movable { animation:tokenPulse 0.7s ease-in-out infinite alternate; }
+    @keyframes tokenPulse {
+      from { transform:scale(1); }
+      to { transform:scale(1.2); box-shadow:0 0 0 3px rgba(255,255,255,0.9); }
+    }
+    #turn-row { display:flex; gap:6px; padding:8px 10px; overflow-x:auto; scrollbar-width:none; }
+    #turn-row::-webkit-scrollbar { display:none; }
+    .turn-row {
+      display:flex; align-items:center; gap:5px; padding:5px 10px; border-radius:999px;
+      border:1px solid var(--dz-border); background:var(--dz-bg-card); opacity:0.45;
+      transition:all 0.2s; flex-shrink:0; font-size:11px; font-weight:600; color:var(--dz-text-secondary);
+    }
+    .turn-row.active { opacity:1; color:var(--dz-text-primary); }
+    .turn-row.active[data-color="red"] { border-color:var(--red); box-shadow:0 0 0 1px var(--red); }
+    .turn-row.active[data-color="green"] { border-color:var(--green); box-shadow:0 0 0 1px var(--green); }
+    .turn-row.active[data-color="yellow"] { border-color:var(--yellow); box-shadow:0 0 0 1px var(--yellow); }
+    .turn-row.active[data-color="blue"] { border-color:var(--blue); box-shadow:0 0 0 1px var(--blue); }
+    .turn-score { font-size:9px; color:var(--dz-text-muted); margin-left:2px; }
+    .turn-dot { width:9px; height:9px; border-radius:50%; }
+    .turn-dot.red { background:var(--red); }
+    .turn-dot.green { background:var(--green); }
+    .turn-dot.yellow { background:var(--yellow); }
+    .turn-dot.blue { background:var(--blue); }
+    .turn-badge { font-size:8px; background:var(--dz-cyan); color:#000; border-radius:999px; padding:1px 5px; font-weight:700; display:none; }
+    .turn-row.active .turn-badge { display:inline-block; }
+    #dice-area { display:flex; align-items:center; gap:16px; padding:10px 12px; justify-content:center; }
+    #dice-face {
+      width:64px; height:64px; position:relative; flex-shrink:0;
+      background:linear-gradient(145deg,#ffffff,#e0e0e0 60%,#bdbdbd);
+      border-radius:12px; box-shadow:4px 4px 0 #9e9e9e,5px 5px 0 #757575,6px 6px 10px rgba(0,0,0,0.5);
+      transform:rotate(-5deg);
+    }
+    #dice-face.rolling { animation:diceRoll 0.5s ease-in-out; }
+    @keyframes diceRoll {
+      0% { transform:rotate(-5deg) scale(1); }
+      50% { transform:rotate(15deg) scale(1.15); }
+      100% { transform:rotate(-5deg) scale(1); }
+    }
+    .dice-dots { position:absolute; inset:0; }
+    .dot { width:10px; height:10px; background:#1a1a1a; border-radius:50%; position:absolute; box-shadow:inset 0 1px 2px rgba(0,0,0,0.5); }
+    #btn-roll {
+      flex:1; max-width:180px; height:52px; min-height:44px;
+      background:var(--dz-text-primary); color:var(--dz-bg); border:none; border-radius:999px;
+      font-family:'Plus Jakarta Sans',sans-serif; font-size:14px; font-weight:700; cursor:pointer;
+    }
+    #btn-roll:disabled { opacity:0.35; cursor:not-allowed; }
+    #log-wrap {
+      margin:0 10px 10px; background:var(--dz-bg-card); border:1px solid var(--dz-border);
+      border-radius:12px; max-height:72px; overflow-y:auto;
+    }
+    #log-list { list-style:none; padding:6px 10px; margin:0; }
+    #log-list li { font-size:11px; color:var(--dz-text-secondary); line-height:1.4; }
+    #log-list li.log-red strong { color:var(--red); }
+    #log-list li.log-green strong { color:var(--green); }
+    #log-list li.log-yellow strong { color:var(--yellow); }
+    #log-list li.log-blue strong { color:var(--blue); }
+    #dz-result-overlay {
+      position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:center;
+      justify-content:center; z-index:200; padding:16px;
+    }
+    #dz-result-overlay.show { display:flex; }
+  </style>
+</head>
+<body>
+<div class="dz-app">
+
+  <header class="dz-topbar">
+    <a class="dz-icon-btn" id="dz-back-hub" href="index.html" aria-label="Back">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <span class="dz-logo" style="font-size:17px;">Ludo</span>
+    <div class="dz-topbar-actions">
+      <button class="dz-icon-btn" id="dz-restart" aria-label="Restart" type="button">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-5"/></svg>
+      </button>
+      <button class="dz-theme-toggle" id="themeToggle" aria-label="Toggle theme" type="button">
+        <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="ludo-setup" class="dz-setup-page">
+    <p class="dz-hero-eyebrow">Ludo</p>
+    <h2 class="dz-hero-heading" style="font-size:28px;margin-bottom:20px;">Choose Your Battle</h2>
+    <div class="dz-mode-grid">
+      <div class="dz-mode-card selected" id="dz-mode-4p" style="cursor:pointer; min-height:100px;">
+        <div class="dz-mode-icon">🎲</div>
+        <div class="dz-mode-name">4-Player</div>
+        <div class="dz-mode-desc">Local pass &amp; play</div>
+      </div>
+      <div class="dz-mode-card" id="dz-mode-2p" style="cursor:pointer; min-height:100px;">
+        <div class="dz-mode-icon">⚔️</div>
+        <div class="dz-mode-name">2-Player</div>
+        <div class="dz-mode-desc">1v1 duel</div>
+      </div>
+      <div class="dz-mode-card" id="dz-mode-bot" style="cursor:pointer; min-height:100px; grid-column: span 2;">
+        <div class="dz-mode-icon">🤖</div>
+        <div class="dz-mode-name">vs Bot</div>
+        <div class="dz-mode-desc">Play against AI</div>
+      </div>
+    </div>
+
+    <!-- 2-Player settings -->
+    <div id="ludo-2p-config" style="display:none; margin-bottom:20px;">
+      <p class="dz-hero-eyebrow" style="margin-bottom:10px;">Select Colors</p>
+      <div style="display:flex; justify-content:space-between; align-items:center;">
+        <select id="ludo-p1-color" style="flex:1; padding:10px; background:var(--dz-bg-card); border:1px solid var(--dz-border); color:var(--dz-text-primary); border-radius:var(--dz-radius-sm);">
+          <option value="red">Red</option>
+          <option value="green">Green</option>
+          <option value="yellow">Yellow</option>
+          <option value="blue">Blue</option>
+        </select>
+        <span style="padding:0 10px; font-weight:bold; color:var(--dz-text-secondary);">VS</span>
+        <select id="ludo-p2-color" style="flex:1; padding:10px; background:var(--dz-bg-card); border:1px solid var(--dz-border); color:var(--dz-text-primary); border-radius:var(--dz-radius-sm);">
+          <option value="yellow" selected>Yellow</option>
+          <option value="red">Red</option>
+          <option value="green">Green</option>
+          <option value="blue">Blue</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Bot Config -->
+    <div id="ludo-bot-config" style="display:none; margin-bottom:20px;">
+      <p class="dz-hero-eyebrow" style="margin-bottom:10px;">Your Color</p>
+      <select id="ludo-human-color" style="width:100%; padding:10px; background:var(--dz-bg-card); border:1px solid var(--dz-border); color:var(--dz-text-primary); border-radius:var(--dz-radius-sm); margin-bottom:15px;">
+        <option value="red">Red</option>
+        <option value="green">Green</option>
+        <option value="yellow">Yellow</option>
+        <option value="blue">Blue</option>
+      </select>
+      <p class="dz-hero-eyebrow" style="margin-bottom:10px;">Number of Bots</p>
+      <select id="ludo-bot-count" style="width:100%; padding:10px; background:var(--dz-bg-card); border:1px solid var(--dz-border); color:var(--dz-text-primary); border-radius:var(--dz-radius-sm);">
+        <option value="1">1 Bot</option>
+        <option value="2" selected>2 Bots</option>
+        <option value="3">3 Bots</option>
+      </select>
+    </div>
+
+    <p style="color:var(--dz-text-secondary);font-size:13px;margin-bottom:24px;">Roll a 6 to enter. Capture rivals for bonus turns.</p>
+    <button class="dz-btn dz-btn-primary-white" id="ludo-start" type="button">START MATCH</button>
+  </div>
+
+  <div id="ludo-play" class="hidden">
+    <div id="turn-row">
+      <div class="turn-row" data-color="red"><span class="turn-dot red"></span><span>Red</span><span class="turn-score">0/4</span><span class="turn-badge">TURN</span></div>
+      <div class="turn-row" data-color="green"><span class="turn-dot green"></span><span>Green</span><span class="turn-score">0/4</span><span class="turn-badge">TURN</span></div>
+      <div class="turn-row" data-color="yellow"><span class="turn-dot yellow"></span><span>Yellow</span><span class="turn-score">0/4</span><span class="turn-badge">TURN</span></div>
+      <div class="turn-row" data-color="blue"><span class="turn-dot blue"></span><span>Blue</span><span class="turn-score">0/4</span><span class="turn-badge">TURN</span></div>
+    </div>
+    <div id="ludo-board-wrap"><div id="ludo-board"></div></div>
+    <div id="dice-area">
+      <div id="dice-face"><div class="dice-dots"></div></div>
+      <button id="btn-roll" type="button">ROLL DICE</button>
+    </div>
+    <div id="log-wrap"><ul id="log-list"></ul></div>
+  </div>
+</div>
+
+<div id="dz-result-overlay">
+  <div class="dz-result-page" style="max-width:320px;">
+    <div class="dz-result-trophy">🏆</div>
+    <h2 class="dz-result-heading" id="dz-result-title">Victory!</h2>
+    <p class="dz-result-subtitle" id="dz-result-sub"></p>
+    <div class="dz-result-actions">
+      <button class="dz-btn dz-btn-primary" id="dz-result-again" type="button">PLAY AGAIN</button>
+      <button class="dz-btn dz-btn-secondary" id="dz-result-share" type="button">SHARE WIN</button>
+    </div>
+    <a class="dz-see-all" href="index.html" style="margin-top:8px;display:block;">← Back to Hub</a>
+  </div>
+</div>
+
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+
+<script src="dz-game-shell.js"></script>
+<script src="ludo.js"></script>
+<script src="dzshare.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(err => console.warn('SW failed:', err));
+    });
+  }
+</script>
+</body>
+</html>

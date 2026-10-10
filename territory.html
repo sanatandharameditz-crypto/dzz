@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Territory · DuelZone</title>
+  <meta name="description" content="Play Territory on DuelZone — Claim the map by painting tiles in this strategic area-control game!" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="duelzone.css" />
+  <style>
+    .hidden { display: none !important; }
+
+    .dz-setup-page .dz-setup-wrap {
+      display: flex; flex-direction: column; gap: 14px;
+      width: 100%; max-width: 400px; margin: 0 auto; padding: 16px;
+      font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dz-text-primary);
+    }
+    .dz-hero-heading {
+      font-size: 28px; font-weight: 800;
+      background: linear-gradient(135deg, #06b6d4, #22d3ee, #67e8f9);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+    }
+    .tr-section-title {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--dz-text-secondary);
+    }
+    .dz-mode-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+    .dz-mode-card {
+      background: var(--dz-bg-card); border: 2px solid var(--dz-border);
+      border-radius: var(--dz-radius-md); padding: 18px 12px;
+      display: flex; flex-direction: column; align-items: center; gap: 8px;
+      cursor: pointer; transition: all var(--dz-transition); text-align: center;
+    }
+    .dz-mode-card:hover { border-color: var(--dz-border-light); transform: translateY(-2px); }
+    .dz-mode-card.selected { border-color: #06b6d4; box-shadow: 0 0 12px rgba(6,182,212,0.2); }
+    .dz-mode-icon { font-size: 26px; }
+    .dz-mode-name { font-size: 14px; font-weight: 700; }
+    .dz-mode-desc { font-size: 10px; color: var(--dz-text-secondary); }
+
+    .tr-size-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
+    .tr-size-card {
+      background: var(--dz-bg-card); border: 2px solid var(--dz-border);
+      border-radius: var(--dz-radius-md); padding: 12px 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 4px;
+      cursor: pointer; transition: all var(--dz-transition); text-align: center;
+    }
+    .tr-size-card:hover { border-color: var(--dz-border-light); }
+    .tr-size-card.selected { border-color: #06b6d4; box-shadow: 0 0 10px rgba(6,182,212,0.15); }
+    .tr-size-name { font-size: 13px; font-weight: 700; }
+
+    .dz-toggle-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 8px; border-bottom: 1.5px solid var(--dz-border);
+    }
+    .dz-toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .dz-toggle input { opacity: 0; width: 0; height: 0; }
+    .dz-toggle-track {
+      position: absolute; cursor: pointer; inset: 0;
+      background-color: var(--dz-border); transition: .3s; border-radius: 24px;
+    }
+    .dz-toggle-track:before {
+      position: absolute; content: ""; height: 16px; width: 16px;
+      left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%;
+    }
+    .dz-toggle input:checked + .dz-toggle-track { background-color: #06b6d4; }
+    .dz-toggle input:checked + .dz-toggle-track:before { transform: translateX(20px); }
+
+    .tr-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 400px; margin: 0 auto; padding: 8px; user-select: none;
+    }
+    .tr-hud {
+      display: flex; justify-content: space-between; align-items: center; width: 100%;
+      background: var(--dz-bg-card); border: 1px solid var(--dz-border);
+      padding: 10px 18px; border-radius: var(--dz-radius-md); font-weight: 800; font-size: 13px;
+    }
+    .tr-board {
+      display: grid; gap: 2px; width: 100%; aspect-ratio: 1;
+      background: #0f172a; border: 4px solid #1e293b; border-radius: 14px; padding: 6px;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+    }
+    .tr-cell {
+      aspect-ratio: 1; border-radius: 3px; cursor: pointer;
+      transition: background-color 0.2s, transform 0.15s;
+      background: #1e293b;
+    }
+    .tr-cell:hover { transform: scale(1.08); }
+    .tr-cell.p1 { background: #06b6d4; box-shadow: inset 0 0 6px rgba(6,182,212,0.4); }
+    .tr-cell.p2 { background: #ef4444; box-shadow: inset 0 0 6px rgba(239,68,68,0.4); }
+    .tr-cell.blocked { background: #475569; cursor: default; }
+    .tr-cell.blocked:hover { transform: none; }
+  </style>
+</head>
+<body>
+<div class="dz-app">
+  <header class="dz-topbar">
+    <a class="dz-icon-btn" id="dz-back-hub" href="index.html" aria-label="Back">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <span class="dz-logo" style="font-size:17px;">Territory</span>
+    <div class="dz-topbar-actions">
+      <button class="dz-icon-btn" id="dz-restart" type="button" aria-label="Restart">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-5"/></svg>
+      </button>
+      <button class="dz-theme-toggle" id="themeToggle" type="button">
+        <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <div id="tr-setup">
+    <div class="dz-setup-page dz-setup-wrap">
+      <p class="dz-hero-eyebrow">Territory</p>
+      <h2 class="dz-hero-heading">Claim the Map</h2>
+      <p style="color:var(--dz-text-secondary);font-size:13px;margin-bottom:12px;">Take turns placing tiles. Control the most territory to win!</p>
+
+      <div class="tr-section-title">Match Mode</div>
+      <div class="dz-mode-grid">
+        <div class="dz-mode-card selected" data-mode="bot">
+          <span class="dz-mode-icon">🤖</span>
+          <span class="dz-mode-name">vs Bot AI</span>
+          <span class="dz-mode-desc">Single Player</span>
+        </div>
+        <div class="dz-mode-card" data-mode="friend">
+          <span class="dz-mode-icon">🤝</span>
+          <span class="dz-mode-name">vs Friend</span>
+          <span class="dz-mode-desc">Pass & Play</span>
+        </div>
+      </div>
+
+      <div class="tr-section-title" style="margin-top:14px;">Board Size</div>
+      <div class="tr-size-cards">
+        <div class="tr-size-card" data-size="6">
+          <span class="tr-size-name">6 × 6</span>
+        </div>
+        <div class="tr-size-card selected" data-size="8">
+          <span class="tr-size-name">8 × 8</span>
+        </div>
+        <div class="tr-size-card" data-size="10">
+          <span class="tr-size-name">10 × 10</span>
+        </div>
+      </div>
+
+      <div class="tr-section-title" style="margin-top:14px;">Settings</div>
+      <div class="dz-toggle-row">
+        <span style="font-size:14px;font-weight:600">Audio FX</span>
+        <label class="dz-toggle">
+          <input type="checkbox" checked id="tr-sound-toggle">
+          <span class="dz-toggle-track"></span><span class="dz-toggle-thumb"></span>
+        </label>
+      </div>
+
+      <button class="dz-btn dz-btn-primary" id="tr-start-btn" type="button"
+              style="margin-top:20px;width:100%;border-radius:var(--dz-radius-xl);font-size:14px;font-weight:700;">
+        CLAIM TERRITORY 🗺️
+      </button>
+    </div>
+  </div>
+
+  <div id="tr-play" class="hidden">
+    <div id="tr-game-area"></div>
+  </div>
+</div>
+
+<div id="dz-result-overlay">
+  <div class="dz-result-page" style="max-width:320px;">
+    <div class="dz-result-trophy">🗺️</div>
+    <h2 class="dz-result-heading" id="dz-result-title">Victory!</h2>
+    <p class="dz-result-subtitle" id="dz-result-sub"></p>
+    <div class="dz-result-actions">
+      <button class="dz-btn dz-btn-primary" id="dz-result-again" type="button">PLAY AGAIN</button>
+      <button class="dz-btn dz-btn-secondary" id="dz-result-share" type="button">SHARE</button>
+    </div>
+    <a class="dz-see-all" href="index.html" style="margin-top:8px;display:block;">← Back to Hub</a>
+  </div>
+</div>
+
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+<script src="dz-game-shell.js"></script>
+<script src="games/territory.js"></script>
+<script src="dzshare.js"></script>
+
+<script>
+(function() {
+  'use strict';
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.dz-mode-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        document.querySelectorAll('.dz-mode-card').forEach(function(c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+      });
+    });
+    document.querySelectorAll('.tr-size-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        document.querySelectorAll('.tr-size-card').forEach(function(c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+      });
+    });
+
+    var setup = document.getElementById('tr-setup');
+    var play = document.getElementById('tr-play');
+    var area = document.getElementById('tr-game-area');
+    var instance = null;
+
+    document.getElementById('tr-start-btn').addEventListener('click', function() {
+      var modeCard = document.querySelector('.dz-mode-card.selected');
+      var sizeCard = document.querySelector('.tr-size-card.selected');
+      var vsBot = modeCard ? modeCard.dataset.mode === 'bot' : true;
+      var size = sizeCard ? parseInt(sizeCard.dataset.size) : 8;
+      var sound = document.getElementById('tr-sound-toggle').checked;
+
+      setup.classList.add('hidden');
+      play.classList.remove('hidden');
+      if (instance && instance.stop) instance.stop();
+
+      setTimeout(function() {
+        try {
+          if (window.DZGames && window.DZGames['territory']) {
+          instance = window.DZGames['territory']({
+            container: area,
+            vsBot: vsBot,
+            gridSize: size,
+            sound: sound,
+            onEnd: function(r) {
+              if (typeof dzShowResult === 'function') {
+                dzShowResult({
+                  title: r.winner + ' Wins!',
+                  subtitle: r.subtitle || 'Territory Match',
+                  onAgain: function() {
+                    if (typeof dzHideResult === 'function') dzHideResult();
+                    play.classList.add('hidden');
+                    setup.classList.remove('hidden');
+                  }
+                });
+              }
+            }
+          });
+          } else {
+            area.innerHTML = '<div style="color:#ff4444; padding:20px; font-family:sans-serif; text-align:center;">Error: Game script not found or failed to load.</div>';
+          }
+        } catch (err) {
+          area.innerHTML = '<div style="color:#ff4444; padding:20px; font-family:sans-serif; text-align:center;">Error: ' + err.message + '</div>';
+        }
+      }, 60);
+    });
+
+    document.getElementById('dz-restart').addEventListener('click', function() {
+      if (instance && instance.stop) instance.stop();
+      if (typeof dzHideResult === 'function') dzHideResult();
+      play.classList.add('hidden');
+      setup.classList.remove('hidden');
+    });
+
+    if (typeof dzInitGamePage === 'function') dzInitGamePage({});
+  });
+})();
+</script>
+</body>
+</html>

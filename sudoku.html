@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Sudoku · DuelZone</title>
+  <meta name="description" content="Play Sudoku on DuelZone — 9x9 Logic Puzzle with virtual keypad, timer, and difficulty modes." />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="duelzone.css" />
+  <style>
+    .hidden { display: none !important; }
+
+    /* ── Sudoku Setup ── */
+    .dz-setup-page .dz-setup-wrap {
+      display: flex; flex-direction: column; gap: 14px;
+      width: 100%; max-width: 400px; margin: 0 auto; padding: 16px;
+      font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dz-text-primary);
+    }
+    .dz-hero-heading {
+      font-size: 28px; font-weight: 800;
+      background: var(--dz-gradient-text);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 2px;
+    }
+    .dz-section-title {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--dz-text-secondary);
+    }
+    .dz-mode-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; }
+    .dz-mode-card {
+      background: var(--dz-bg-card); border: 2px solid var(--dz-border);
+      border-radius: var(--dz-radius-md); padding: 14px 8px;
+      display: flex; flex-direction: column; align-items: center; gap: 6px;
+      cursor: pointer; transition: all var(--dz-transition); text-align: center;
+    }
+    .dz-mode-card:hover { border-color: var(--dz-border-light); transform: translateY(-2px); }
+    .dz-mode-card.selected { border-color: var(--dz-cyan); box-shadow: 0 0 12px rgba(0,229,255,0.15); }
+    .dz-mode-name { font-size: 13px; font-weight: 700; }
+
+    .dz-toggle-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 8px; border-bottom: 1.5px solid var(--dz-border);
+    }
+    .dz-toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .dz-toggle input { opacity: 0; width: 0; height: 0; }
+    .dz-toggle-track {
+      position: absolute; cursor: pointer; inset: 0;
+      background-color: var(--dz-border); transition: .3s; border-radius: 24px;
+    }
+    .dz-toggle-track:before {
+      position: absolute; content: ""; height: 16px; width: 16px;
+      left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%;
+    }
+    .dz-toggle input:checked + .dz-toggle-track { background-color: var(--dz-cyan); }
+    .dz-toggle input:checked + .dz-toggle-track:before { transform: translateX(20px); }
+
+    /* ── Sudoku Grid UI ── */
+    .sdk-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 380px; margin: 0 auto; padding: 8px; user-select: none;
+    }
+    .sdk-status-bar {
+      display: flex; justify-content: space-between; align-items: center; width: 100%;
+      background: var(--dz-bg-card); border: 1px solid var(--dz-border);
+      padding: 8px 14px; border-radius: var(--dz-radius-md); font-size: 13px; font-weight: 700;
+    }
+    .sdk-timer { font-family: monospace; font-size: 15px; color: var(--dz-cyan); }
+
+    .sdk-board {
+      display: grid; grid-template-columns: repeat(9, 1fr);
+      background: #0f172a; border: 3px solid #334155; border-radius: 12px;
+      overflow: hidden; width: 100%; aspect-ratio: 1;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+    }
+    .sdk-cell {
+      display: flex; align-items: center; justify-content: center;
+      font-size: 18px; font-weight: 700; color: var(--dz-text-primary);
+      border: 1px solid rgba(255,255,255,0.06); cursor: pointer; transition: all 0.15s;
+    }
+    .sdk-cell.given { background: rgba(255,255,255,0.03); color: #94a3b8; font-weight: 800; }
+    .sdk-cell.user { color: var(--dz-cyan); }
+    .sdk-cell.error { color: #ef4444; background: rgba(239, 68, 68, 0.2); }
+    .sdk-cell.selected { background: rgba(0, 229, 255, 0.25) !important; }
+    .sdk-cell.highlight { background: rgba(0, 229, 255, 0.08); }
+    /* Thick 3x3 borders */
+    .sdk-cell:nth-child(3n) { border-right: 2px solid #475569; }
+    .sdk-cell:nth-child(9n) { border-right: none; }
+    .sdk-cell-row-3, .sdk-cell-row-6 { border-bottom: 2px solid #475569; }
+
+    .sdk-numpad {
+      display: grid; grid-template-columns: repeat(5, 1fr); gap: 8px; width: 100%; margin-top: 4px;
+    }
+    .sdk-num-btn {
+      background: var(--dz-bg-card); border: 1px solid var(--dz-border);
+      border-radius: var(--dz-radius-md); padding: 12px 0; font-size: 16px; font-weight: 800;
+      color: var(--dz-text-primary); cursor: pointer; transition: all 0.15s;
+    }
+    .sdk-num-btn:hover { border-color: var(--dz-cyan); color: var(--dz-cyan); transform: translateY(-2px); }
+  </style>
+</head>
+<body>
+<div class="dz-app">
+  <header class="dz-topbar">
+    <a class="dz-icon-btn" id="dz-back-hub" href="index.html" aria-label="Back">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <span class="dz-logo" style="font-size:17px;">Sudoku</span>
+    <div class="dz-topbar-actions">
+      <button class="dz-icon-btn" id="dz-restart" type="button" aria-label="Restart">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-5"/></svg>
+      </button>
+      <button class="dz-theme-toggle" id="themeToggle" type="button">
+        <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Setup Screen -->
+  <div id="sdk-setup">
+    <div class="dz-setup-page dz-setup-wrap">
+      <p class="dz-hero-eyebrow">Sudoku</p>
+      <h2 class="dz-hero-heading">Logic Puzzle</h2>
+      <p style="color:var(--dz-text-secondary);font-size:13px;margin-bottom:12px;">Fill rows, cols, and 3x3 boxes with 1–9</p>
+
+      <div class="dz-section-title">Difficulty</div>
+      <div class="dz-mode-grid">
+        <div class="dz-mode-card selected" data-diff="easy">
+          <span class="dz-mode-name">Easy</span>
+        </div>
+        <div class="dz-mode-card" data-diff="medium">
+          <span class="dz-mode-name">Medium</span>
+        </div>
+        <div class="dz-mode-card" data-diff="hard">
+          <span class="dz-mode-name">Hard</span>
+        </div>
+      </div>
+
+      <div class="dz-section-title" style="margin-top:16px;">Settings</div>
+      <div class="dz-toggle-row">
+        <span style="font-size:14px;font-weight:600">Sound Effects</span>
+        <label class="dz-toggle">
+          <input type="checkbox" checked id="sdk-sound-toggle">
+          <span class="dz-toggle-track"></span><span class="dz-toggle-thumb"></span>
+        </label>
+      </div>
+
+      <button class="dz-btn dz-btn-primary" id="sdk-start-btn" type="button"
+              style="margin-top:20px;width:100%;border-radius:var(--dz-radius-xl);font-size:14px;font-weight:700;">
+        START PUZZLE
+      </button>
+    </div>
+  </div>
+
+  <!-- Play Screen -->
+  <div id="sdk-play" class="hidden">
+    <div id="sdk-game-area"></div>
+  </div>
+</div>
+
+<div id="dz-result-overlay">
+  <div class="dz-result-page" style="max-width:320px;">
+    <div class="dz-result-trophy">🔢</div>
+    <h2 class="dz-result-heading" id="dz-result-title">Victory!</h2>
+    <p class="dz-result-subtitle" id="dz-result-sub"></p>
+    <div class="dz-result-actions">
+      <button class="dz-btn dz-btn-primary" id="dz-result-again" type="button">PLAY AGAIN</button>
+      <button class="dz-btn dz-btn-secondary" id="dz-result-share" type="button">SHARE</button>
+    </div>
+    <a class="dz-see-all" href="index.html" style="margin-top:8px;display:block;">← Back to Hub</a>
+  </div>
+</div>
+
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+<script src="dz-game-shell.js"></script>
+<script src="games/sudoku.js"></script>
+<script src="dzshare.js"></script>
+
+<script>
+(function() {
+  'use strict';
+  document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.dz-mode-card').forEach(function(card) {
+      card.addEventListener('click', function() {
+        document.querySelectorAll('.dz-mode-card').forEach(function(c) { c.classList.remove('selected'); });
+        card.classList.add('selected');
+      });
+    });
+
+    var setup = document.getElementById('sdk-setup');
+    var play = document.getElementById('sdk-play');
+    var area = document.getElementById('sdk-game-area');
+    var instance = null;
+
+    document.getElementById('sdk-start-btn').addEventListener('click', function() {
+      var diffCard = document.querySelector('.dz-mode-card.selected');
+      var diff = diffCard ? diffCard.dataset.diff : 'easy';
+      var sound = document.getElementById('sdk-sound-toggle').checked;
+
+      setup.classList.add('hidden');
+      play.classList.remove('hidden');
+      if (instance && instance.stop) instance.stop();
+
+      setTimeout(function() {
+        try {
+          if (window.DZGames && window.DZGames['sudoku']) {
+        instance = window.DZGames['sudoku']({
+          container: area,
+          difficulty: diff,
+          sound: sound,
+          onEnd: function(r) {
+            if (typeof dzShowResult === 'function') {
+              dzShowResult({
+                title: 'Puzzle Solved!',
+                subtitle: 'Completed in ' + r.time,
+                onAgain: function() {
+                  if (typeof dzHideResult === 'function') dzHideResult();
+                  play.classList.add('hidden');
+                  setup.classList.remove('hidden');
+                }
+              });
+            }
+          }
+        });
+          } else {
+            area.innerHTML = '<div style="color:#ff4444; padding:20px; font-family:sans-serif; text-align:center;">Error: Game script not found or failed to load.</div>';
+          }
+        } catch (err) {
+          area.innerHTML = '<div style="color:#ff4444; padding:20px; font-family:sans-serif; text-align:center;">Error: ' + err.message + '</div>';
+        }
+      }, 60);
+    });
+
+    document.getElementById('dz-restart').addEventListener('click', function() {
+      if (instance && instance.stop) instance.stop();
+      if (typeof dzHideResult === 'function') dzHideResult();
+      play.classList.add('hidden');
+      setup.classList.remove('hidden');
+    });
+
+    if (typeof dzInitGamePage === 'function') dzInitGamePage({});
+  });
+})();
+</script>
+</body>
+</html>

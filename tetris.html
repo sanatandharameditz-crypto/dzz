@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Tetris · DuelZone</title>
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="duelzone.css"/>
+  <style>
+    .hidden { display: none !important; }
+    #tetris-wrap { padding: 12px; display:flex; flex-direction:column; align-items:center; gap:12px; }
+    #tetris-canvas {
+      background: var(--dz-bg-card); border:1px solid var(--dz-border);
+      border-radius: var(--dz-radius-lg); max-width:100%; touch-action:none;
+    }
+    .tetris-stats { display:flex; gap:16px; font-size:14px; color:var(--dz-text-secondary); }
+    .tetris-stats strong { color:var(--dz-cyan); font-size:18px; display:block; }
+    .tetris-controls { display:flex; gap:8px; flex-wrap:wrap; justify-content:center; }
+    .tetris-controls button {
+      min-width:64px; min-height:44px; border-radius:var(--dz-radius-pill);
+      border:1px solid var(--dz-border); background:var(--dz-bg-card);
+      color:var(--dz-text-primary); font-weight:600; cursor:pointer;
+    }
+    #dz-result-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.88); display:none; align-items:center; justify-content:center; z-index:200; padding:16px; }
+    #dz-result-overlay.show { display:flex; }
+  </style>
+</head>
+<body>
+<div class="dz-app">
+  <header class="dz-topbar">
+    <a class="dz-icon-btn" id="dz-back-hub" href="index.html"><svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg></a>
+    <span class="dz-logo" style="font-size:17px;">Tetris</span>
+    <div class="dz-topbar-actions">
+      <button class="dz-icon-btn" id="dz-restart" type="button" aria-label="Restart"><svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-5"/></svg></button>
+      <button class="dz-theme-toggle" id="themeToggle" type="button"><svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg><svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/></svg></button>
+    </div>
+  </header>
+  <div id="tetris-setup" class="dz-setup-page">
+    <p class="dz-hero-eyebrow">Tetris</p>
+    <h2 class="dz-hero-heading" style="font-size:28px;">Stack to Survive</h2>
+    <p style="color:var(--dz-text-secondary);font-size:13px;margin-bottom:24px;">Arrow keys or on-screen buttons. Clear lines to score.</p>
+    <button class="dz-btn dz-btn-primary" id="tetris-start" type="button">START GAME</button>
+  </div>
+  <div id="tetris-play" class="hidden">
+    <div id="tetris-wrap">
+      <div class="tetris-stats">
+        <div><strong id="t-score">0</strong>Score</div>
+        <div><strong id="t-lines">0</strong>Lines</div>
+        <div><strong id="t-level">1</strong>Level</div>
+      </div>
+      <canvas id="tetris-canvas" width="300" height="600"></canvas>
+      <div class="tetris-controls">
+        <button type="button" data-act="left">←</button>
+        <button type="button" data-act="rotate">↻</button>
+        <button type="button" data-act="right">→</button>
+        <button type="button" data-act="down">↓</button>
+        <button type="button" data-act="drop">DROP</button>
+      </div>
+    </div>
+  </div>
+</div>
+<div id="dz-result-overlay">
+  <div class="dz-result-page" style="max-width:320px;">
+    <div class="dz-result-trophy">🟦</div>
+    <h2 class="dz-result-heading" id="dz-result-title">Game Over</h2>
+    <p class="dz-result-subtitle" id="dz-result-sub"></p>
+    <div class="dz-result-actions">
+      <button class="dz-btn dz-btn-primary" id="dz-result-again" type="button">PLAY AGAIN</button>
+      <button class="dz-btn dz-btn-secondary" id="dz-result-share" type="button">SHARE</button>
+    </div>
+    <a class="dz-see-all" href="index.html" style="margin-top:8px;display:block;">← Back to Hub</a>
+  </div>
+</div>
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+
+<script src="dz-game-shell.js"></script>
+<script src="tetris.js"></script>
+<script src="dzshare.js"></script>
+<script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      navigator.serviceWorker.register('service-worker.js').catch(err => console.warn('SW failed:', err));
+    });
+  }
+</script>
+</body>
+</html>

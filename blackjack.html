@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Blackjack · DuelZone</title>
+  <meta name="description" content="Play Blackjack 21 on DuelZone — Casino felt table card action vs Dealer AI!" />
+  <link rel="manifest" href="manifest.json" />
+  <meta name="theme-color" content="#000000" />
+  <link rel="stylesheet" href="duelzone.css" />
+  <style>
+    .hidden { display: none !important; }
+
+    /* ── Blackjack Setup ── */
+    .dz-setup-page .dz-setup-wrap {
+      display: flex; flex-direction: column; gap: 14px;
+      width: 100%; max-width: 400px; margin: 0 auto; padding: 16px;
+      font-family: 'Plus Jakarta Sans', sans-serif; color: var(--dz-text-primary);
+    }
+    .dz-hero-heading {
+      font-size: 28px; font-weight: 800;
+      background: var(--dz-gradient-text);
+      -webkit-background-clip: text; -webkit-text-fill-color: transparent;
+      margin-bottom: 2px;
+    }
+    .dz-section-title {
+      font-size: 11px; font-weight: 800; text-transform: uppercase;
+      letter-spacing: 1px; color: var(--dz-text-secondary);
+    }
+
+    .dz-toggle-row {
+      display: flex; justify-content: space-between; align-items: center;
+      padding-bottom: 8px; border-bottom: 1.5px solid var(--dz-border);
+    }
+    .dz-toggle { position: relative; display: inline-block; width: 44px; height: 24px; }
+    .dz-toggle input { opacity: 0; width: 0; height: 0; }
+    .dz-toggle-track {
+      position: absolute; cursor: pointer; inset: 0;
+      background-color: var(--dz-border); transition: .3s; border-radius: 24px;
+    }
+    .dz-toggle-track:before {
+      position: absolute; content: ""; height: 16px; width: 16px;
+      left: 4px; bottom: 4px; background-color: white; transition: .3s; border-radius: 50%;
+    }
+    .dz-toggle input:checked + .dz-toggle-track { background-color: var(--dz-cyan); }
+    .dz-toggle input:checked + .dz-toggle-track:before { transform: translateX(20px); }
+
+    /* ── Blackjack Felt UI ── */
+    .bj-wrap {
+      display: flex; flex-direction: column; align-items: center; gap: 12px;
+      width: 100%; max-width: 400px; margin: 0 auto; padding: 8px; user-select: none;
+    }
+    .bj-table {
+      background: radial-gradient(circle at 50% 40%, #064e3b, #022c22);
+      border: 4px solid #15803d; border-radius: 24px; padding: 14px; width: 100%;
+      box-shadow: 0 12px 32px rgba(0,0,0,0.6), inset 0 0 30px rgba(0,0,0,0.4);
+      display: flex; flex-direction: column; gap: 16px; position: relative;
+    }
+    .bj-hand-section {
+      display: flex; flex-direction: column; align-items: center; gap: 6px; width: 100%;
+    }
+    .bj-hand-label {
+      font-size: 12px; font-weight: 800; text-transform: uppercase; color: #86efac;
+      letter-spacing: 1px; background: rgba(0,0,0,0.3); padding: 2px 10px; border-radius: 12px;
+    }
+    .bj-cards {
+      display: flex; justify-content: center; gap: 8px; min-height: 80px; width: 100%;
+    }
+    .bj-card {
+      width: 54px; height: 78px; background: #fff; border-radius: 6px;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.4); display: flex; flex-direction: column;
+      justify-content: space-between; padding: 4px 6px; font-weight: 800; font-size: 14px;
+      color: #000; position: relative; transition: transform 0.2s;
+    }
+    .bj-card.red { color: #dc2626; }
+    .bj-card-back {
+      background: linear-gradient(135deg, #1e293b, #0f172a); border: 2px solid #3b82f6;
+      color: #3b82f6; display: flex; align-items: center; justify-content: center; font-size: 20px;
+    }
+
+    .bj-controls {
+      display: flex; gap: 10px; width: 100%; justify-content: center; margin-top: 4px;
+    }
+    .bj-btn {
+      flex: 1; padding: 12px 0; border-radius: var(--dz-radius-md); border: none;
+      font-size: 13px; font-weight: 800; cursor: pointer; transition: all 0.15s;
+    }
+    .bj-btn-hit { background: #10b981; color: #fff; }
+    .bj-btn-stand { background: #ef4444; color: #fff; }
+    .bj-btn-double { background: #f59e0b; color: #fff; }
+    .bj-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+    .bj-chips-bar {
+      display: flex; justify-content: space-between; align-items: center; width: 100%;
+      background: var(--dz-bg-card); border: 1px solid var(--dz-border);
+      padding: 8px 14px; border-radius: var(--dz-radius-md); font-weight: 800; font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+<div class="dz-app">
+  <header class="dz-topbar">
+    <a class="dz-icon-btn" id="dz-back-hub" href="index.html" aria-label="Back">
+      <svg viewBox="0 0 24 24"><polyline points="15 18 9 12 15 6"/></svg>
+    </a>
+    <span class="dz-logo" style="font-size:17px;">Blackjack</span>
+    <div class="dz-topbar-actions">
+      <button class="dz-icon-btn" id="dz-restart" type="button" aria-label="Restart">
+        <svg viewBox="0 0 24 24"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-.08-5"/></svg>
+      </button>
+      <button class="dz-theme-toggle" id="themeToggle" type="button">
+        <svg id="iconMoon" viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        <svg id="iconSun" viewBox="0 0 24 24" style="display:none"><circle cx="12" cy="12" r="5"/></svg>
+      </button>
+    </div>
+  </header>
+
+  <!-- Setup Screen -->
+  <div id="bj-setup">
+    <div class="dz-setup-page dz-setup-wrap">
+      <p class="dz-hero-eyebrow">Blackjack 21</p>
+      <h2 class="dz-hero-heading">Beat Dealer</h2>
+      <p style="color:var(--dz-text-secondary);font-size:13px;margin-bottom:12px;">Get as close to 21 without going over!</p>
+
+      <div class="dz-section-title">Settings</div>
+      <div class="dz-toggle-row">
+        <span style="font-size:14px;font-weight:600">Casino Audio FX</span>
+        <label class="dz-toggle">
+          <input type="checkbox" checked id="bj-sound-toggle">
+          <span class="dz-toggle-track"></span><span class="dz-toggle-thumb"></span>
+        </label>
+      </div>
+
+      <button class="dz-btn dz-btn-primary" id="bj-start-btn" type="button"
+              style="margin-top:20px;width:100%;border-radius:var(--dz-radius-xl);font-size:14px;font-weight:700;">
+        DEAL CARDS
+      </button>
+    </div>
+  </div>
+
+  <!-- Play Screen -->
+  <div id="bj-play" class="hidden">
+    <div id="bj-game-area"></div>
+  </div>
+</div>
+
+<div id="dz-result-overlay">
+  <div class="dz-result-page" style="max-width:320px;">
+    <div class="dz-result-trophy">🃏</div>
+    <h2 class="dz-result-heading" id="dz-result-title">Game Over</h2>
+    <p class="dz-result-subtitle" id="dz-result-sub"></p>
+    <div class="dz-result-actions">
+      <button class="dz-btn dz-btn-primary" id="dz-result-again" type="button">PLAY AGAIN</button>
+      <button class="dz-btn dz-btn-secondary" id="dz-result-share" type="button">SHARE</button>
+    </div>
+    <a class="dz-see-all" href="index.html" style="margin-top:8px;display:block;">← Back to Hub</a>
+  </div>
+</div>
+
+<script src="dz-games.js"></script>
+<script src="dz-theme.js"></script>
+<script src="dz-core.js"></script>
+<script src="dz-game-shell.js"></script>
+<script src="games/blackjack.js"></script>
+<script src="dzshare.js"></script>
+
+<script>
+(function() {
+  'use strict';
+  document.addEventListener('DOMContentLoaded', function() {
+    var setup = document.getElementById('bj-setup');
+    var play = document.getElementById('bj-play');
+    var area = document.getElementById('bj-game-area');
+    var instance = null;
+
+    document.getElementById('bj-start-btn').addEventListener('click', function() {
+      var sound = document.getElementById('bj-sound-toggle').checked;
+
+      setup.classList.add('hidden');
+      play.classList.remove('hidden');
+      if (instance && instance.stop) instance.stop();
+
+      setTimeout(function() {
+        try {
+          if (window.DZGames && window.DZGames['blackjack']) {
+          instance = window.DZGames['blackjack']({
+            container: area,
+            sound: sound,
+            onEnd: function(r) {
+              if (typeof dzShowResult === 'function') {
+                dzShowResult({
+                  title: r.winner + '!',
+                  subtitle: r.subtitle || 'Chips: $' + r.chips,
+                  onAgain: function() {
+                    if (typeof dzHideResult === 'function') dzHideResult();
+                    play.classList.add('hidden');
+                    setup.classList.remove('hidden');
+                  }
+                });
+              }
+            }
+          });
+          } else {
+            area.innerHTML = '<div style="color:#ff4444; padding:20px; font-family:sans-serif; text-align:center;">Error: Game script not found or failed to load.</div>';
+          }
+        } catch (err) {
+          area.innerHTML = '<div style="color:#ff4444; padding:20px; font-family:sans-serif; text-align:center;">Error: ' + err.message + '</div>';
+        }
+      }, 60);
+    });
+
+    document.getElementById('dz-restart').addEventListener('click', function() {
+      if (instance && instance.stop) instance.stop();
+      if (typeof dzHideResult === 'function') dzHideResult();
+      play.classList.add('hidden');
+      setup.classList.remove('hidden');
+    });
+
+    if (typeof dzInitGamePage === 'function') dzInitGamePage({});
+  });
+})();
+</script>
+</body>
+</html>
