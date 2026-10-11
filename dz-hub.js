@@ -206,17 +206,19 @@
         });
 
         // Show active panel with animation
-        if (panels[key]) {
-          panels[key].classList.remove('hidden');
-          // Trigger reflow then add animation
-          void panels[key].offsetHeight;
-          panels[key].classList.add('dz-panel--animated');
+        var targetPanel = key === 'games' ? panels['home'] : panels[key];
+        if (targetPanel) {
+          targetPanel.classList.remove('hidden');
+          void targetPanel.offsetHeight;
+          targetPanel.classList.add('dz-panel--animated');
         }
         
         if (key === 'profile') renderProfile();
         if (key === 'games') {
-          var el = document.getElementById('dz-games-section');
-          if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          setTimeout(function() {
+            var el = document.getElementById('dz-games-section');
+            if (el) el.scrollIntoView({ behavior: 'smooth', block: 'start' });
+          }, 50);
         }
       });
     });

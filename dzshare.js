@@ -1,12 +1,16 @@
 (function (global) {
   'use strict';
 
-  // Load qrious for QR Code generation
-  var qrReady = false;
-  var script = document.createElement('script');
-  script.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js';
-  script.onload = function() { qrReady = true; };
-  document.head.appendChild(script);
+  // Preload QRious
+  function loadQRious(cb) {
+    if (global.QRious) { if (cb) cb(); return; }
+    var s = document.createElement('script');
+    s.src = 'https://cdnjs.cloudflare.com/ajax/libs/qrious/4.0.2/qrious.min.js';
+    s.onload = function() { if (cb) cb(); };
+    s.onerror = function() { if (cb) cb(); };
+    document.head.appendChild(s);
+  }
+  loadQRious();
 
   function _safe(text) {
     if (!text) return '';
@@ -56,17 +60,17 @@
   function createShareCard(options) {
     var opts = options || {};
     var w = 540;
-    var h = 960; // Vertical format matching the design
+    var h = 960; // Vertical format matching user screenshot
     var canvas = document.createElement('canvas');
     canvas.width = w;
     canvas.height = h;
     var ctx = canvas.getContext('2d');
 
-    // Black background
+    // Deep Black background
     ctx.fillStyle = '#050505';
     ctx.fillRect(0, 0, w, h);
 
-    // Floating colorful squares
+    // Floating colorful squares with gradients (retro aesthetic)
     var squares = [
       { x: 80, y: 150, size: 80, r: -15, color1: '#f97316', color2: '#fbbf24' },
       { x: 420, y: 220, size: 70, r: 10, color1: '#a855f7', color2: '#ec4899' },
@@ -88,11 +92,11 @@
       ctx.restore();
     });
 
-    // Top Right: Player info
+    // Top Right: Player info (Avatar, Name, Level)
     if (typeof window !== 'undefined' && window.DZPlayer) {
-      var pName = window.DZPlayer.data.name || 'Player';
-      var pLevel = 'Lv.' + (window.DZPlayer.data.level || 1);
-      var avatar = window.DZPlayer.data.avatar || '👽';
+      var pName = (window.DZPlayer.data && window.DZPlayer.data.name) || 'Player';
+      var pLevel = 'Lv.' + ((window.DZPlayer.data && window.DZPlayer.data.level) || 1);
+      var avatar = (window.DZPlayer.data && window.DZPlayer.data.avatar) || '👽';
       
       ctx.textAlign = 'right';
       ctx.textBaseline = 'top';
@@ -112,59 +116,62 @@
       ctx.fillText(_safe(pLevel), w - 85, 65);
     }
 
-    // Main Text (Glitch)
+    // Main Text (Glitch Retro Style)
     drawGlitchText(ctx, "DUELZONE", w/2, 280, 75);
-    drawGlitchText(ctx, _safe((opts.title || "VICTORY").toUpperCase()), w/2, 400, 55);
+    drawGlitchText(ctx, _safe((opts.title || "VICTORY").toUpperCase()), w/2, 400, 52);
 
     if (opts.stats) {
       ctx.fillStyle = '#ffffff';
       ctx.font = 'bold 42px Plus Jakarta Sans, sans-serif';
       ctx.textAlign = 'center';
-      ctx.fillText(_safe(opts.stats), w/2, 520);
+      ctx.fillText(_safe(opts.stats), w/2, 510);
     }
 
-    // QR Code
-    if (qrReady && typeof QRious !== 'undefined') {
-      var gameUrl = window.location.href; // Direct to game
-      var qr = new QRious({
-        value: gameUrl,
-        size: 160,
-        background: '#ffffff',
-        foreground: '#050505',
-        level: 'H'
-      });
-      
-      var qrImg = new Image();
-      qrImg.src = qr.toDataURL();
-      
-      ctx.fillStyle = '#ffffff';
-      drawRoundedRect(ctx, w/2 - 95, 620, 190, 190, 16);
-      
-      // Draw QR Code onto canvas
-      ctx.drawImage(qrImg, w/2 - 80, 635, 160, 160);
-      
-      ctx.fillStyle = '#a1a1aa';
-      ctx.font = 'bold 16px Plus Jakarta Sans, sans-serif';
-      ctx.textAlign = 'center';
-      ctx.fillText("SCAN TO PLAY", w/2, 840);
+    // QR Code (Directly drawn from QRious canvas synchronously)
+    if (typeof QRious !== 'undefined') {
+      try {
+        var gameUrl = window.location.href;
+        var qr = new QRious({
+          value: gameUrl,
+          size: 160,
+          background: '#ffffff',
+          foreground: '#050505',
+          level: 'M'
+        });
+        
+        ctx.fillStyle = '#ffffff';
+        drawRoundedRect(ctx, w/2 - 95, 610, 190, 190, 16);
+        
+        // Draw the QR canvas directly onto the share canvas (100% synchronous)
+        ctx.drawImage(qr.canvas, w/2 - 80, 625, 160, 160);
+        
+        ctx.fillStyle = '#a1a1aa';
+        ctx.font = 'bold 16px Plus Jakarta Sans, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.fillText("SCAN TO PLAY", w/2, 830);
+      } catch (err) {
+        console.warn('QR code generation error:', err);
+      }
     }
 
     return canvas;
   }
 
   function shareWin(options) {
-    var canvas = createShareCard(options);
-    var dataUrl = canvas.toDataURL('image/png');
-    if (navigator.share && options.tryNativeShare) {
-      canvas.toBlob(function (blob) {
-        if (!blob) return downloadDataUrl(dataUrl, 'duelzone-win.png');
-        var file = new File([blob], 'duelzone-win.png', { type: 'image/png' });
-        navigator.share({ files: [file], title: _safe(options.title || 'DuelZone Win') })
-          .catch(function () { downloadDataUrl(dataUrl, 'duelzone-win.png'); });
-      });
-    } else {
-      downloadDataUrl(dataUrl, 'duelzone-win.png');
-    }
+    loadQRious(function () {
+      var canvas = createShareCard(options);
+      var dataUrl = canvas.toDataURL('image/png');
+      if (navigator.share && options.tryNativeShare) {
+        canvas.toBlob(function (blob) {
+          if (!blob) return downloadDataUrl(dataUrl, 'duelzone-win.png');
+          var file = new File([blob], 'duelzone-win.png', { type: 'image/png' });
+          navigator.share({ files: [file], title: _safe(options.title || 'DuelZone Win') })
+            .catch(function () { downloadDataUrl(dataUrl, 'duelzone-win.png'); });
+        });
+      } else {
+        downloadDataUrl(dataUrl, 'duelzone-win.png');
+      }
+    });
   }
 
   function downloadDataUrl(dataUrl, filename) {
